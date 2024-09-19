@@ -1,23 +1,16 @@
-import time
 import sys, os
+import time
+import rospy
+import numpy as np
 from threading import Lock
 from copy import copy
-import numpy as np
 from numpy.linalg import norm
 
-import rospy  # Sostituito rclpy con rospy
 from geometry_msgs.msg import Twist
 from quad_sim_python_msgs.msg import QuadMotors, QuadState, QuadControlSetPoint
 
-from rclpy_param_helper import Dict2ROS2Params, ROS2Params2Dict  # Manteniamo i nomi come richiesto
 from quad_sim_python import Controller
 
-# Aggiunto il controllo del percorso corrente
-curr_path = os.getcwd()
-if os.path.basename(curr_path) not in sys.path:
-    sys.path.append(os.path.dirname(os.getcwd()))
-
-# Parametri di controllo
 ctrl_params = {
     # Position P gains
     "Px": 2.0,
@@ -52,7 +45,7 @@ ctrl_params = {
     "Pr": 1.0,
     "Dr": 0.1,
 
-    # Max Velocities (x,y,z) [m/s]
+    # Max Velocities (x, y, z) [m/s]
     "uMax": 50.0,
     "vMax": 50.0,
     "wMax": 50.0,
@@ -76,77 +69,148 @@ ctrl_params = {
 
 class QuadCtrl:
     def __init__(self):
-        # Inizializzazione del nodo
-        rospy.init_node('quad_ctrl', anonymous=True)
+        rospy.init_node('quadctrl')
 
-        # Pubblicatori e sottoscrittori
-        self.w_cmd_pub = rospy.Publisher('/quad_w_cmd', QuadMotors, queue_size=10)
-        self.state_sub = rospy.Subscriber('/quad_state', QuadState, self.state_callback)
-        self.cmd_sub = rospy.Subscriber('/quad_cmd', QuadControlSetPoint, self.cmd_callback)
+        self.started = False
+        self.quad_state = False
+        self.t = None
 
-        # Blocco per la concorrenza
-        self.lock = Lock()
+        self.quadstate_lock = Lock()
+        self.ctrl_sp_lock = Lock()
 
-        # Caricamento dei parametri iniziali
-        self.ctrl = Controller(Dict2ROS2Params(ctrl_params))
-        self.current_state = None
-        self.current_time = None
-        self.last_time = None
+        self.curr_sp = QuadControlSetPoint()
+        self.prev_sp = copy(self.curr_sp)
 
-        # Memorizzazione dei messaggi di controllo
-        self.cmd = None
+        # Recupera i parametri definiti nel nodo
+        for param_name, default_value in ctrl_params.items():
+            ctrl_params[param_name] = rospy.get_param(f'~{param_name}', default_value)
 
-        rospy.loginfo("QuadCtrl node initialized")
+        # Carica parametri del simulatore quad
+        parameters_received = False
+        while not parameters_received:
+            quad_params_list = ['mB', 'g', 'IB', 'maxThr', 'minThr', 'orient', 'mixerFMinv', 'minWmotor', 'maxWmotor', 'target_frame']
+            self.quad_params = {}
+            for param in quad_params_list:
+                self.quad_params[param] = rospy.get_param(f'/quadsim/{param}', None)
 
-    def state_callback(self, state_msg):
-        with self.lock:
-            self.current_state = state_msg
-            self.current_time = rospy.Time.now()
+            if all(self.quad_params.values()):
+                parameters_received = True
+            else:
+                rospy.logwarn('In attesa dei parametri di quadsim...')
+                time.sleep(1)
 
-            if self.cmd is not None:
-                self.process_control()
+        # Sottoscrizioni ai topic
+        self.receive_control_sp = rospy.Subscriber(
+            f"/quadctrl/{self.quad_params['target_frame']}/ctrl_sp",
+            QuadControlSetPoint,
+            self.receive_control_sp_cb,
+            queue_size=1
+        )
 
-    def cmd_callback(self, cmd_msg):
-        with self.lock:
-            self.cmd = cmd_msg
-            if self.current_state is not None:
-                self.process_control()
+        self.receive_control_twist = rospy.Subscriber(
+            f"/quadctrl/{self.quad_params['target_frame']}/ctrl_twist_sp",
+            Twist,
+            self.receive_control_twist_cb,
+            queue_size=1
+        )
 
-    def process_control(self):
-        """Elabora il messaggio di controllo e pubblica i comandi per i motori"""
-        # Controlla che ci sia stato un aggiornamento del tempo
-        if self.last_time is None:
-            self.last_time = self.current_time
+        self.receive_quadstate = rospy.Subscriber(
+            f"/quadsim/{self.quad_params['target_frame']}/state",
+            QuadState,
+            self.receive_quadstate_cb,
+            queue_size=1
+        )
+
+        # Publisher dei comandi motore
+        self.w_cmd_pub = rospy.Publisher(
+            f"/quadsim/{self.quad_params['target_frame']}/w_cmd",
+            QuadMotors,
+            queue_size=1
+        )
+
+    def start_ctrl(self):
+        params = {param_name: rospy.get_param(f'~{param_name}', default_value) for param_name, default_value in ctrl_params.items()}
+        self.ctrl = Controller(self.quad_params, orient=self.quad_params['orient'], params=params)
+
+    def receive_control_sp_cb(self, sp_msg):
+        if not self.started:
+            self.start_ctrl()
+            self.started = True
+            rospy.loginfo('Controller avviato!')
+
+        with self.ctrl_sp_lock:
+            self.curr_sp = sp_msg
+
+        rospy.loginfo(f'Received control setpoint: {self.curr_sp}')
+
+    def receive_control_twist_cb(self, twist):
+        if not self.started:
+            self.start_ctrl()
+            self.started = True
+            rospy.loginfo('Controller avviato!')
+
+        with self.ctrl_sp_lock:
+            now = rospy.Time.now()
+            self.curr_sp.header.stamp = now
+            self.curr_sp.ctrltype = "xyz_vel"
+            self.curr_sp.pos = [0.0, 0.0, 0.0]
+            self.curr_sp.vel = [twist.linear.x, twist.linear.y, twist.linear.z]
+            self.curr_sp.acc = [0.0, 0.0, 0.0]
+            self.curr_sp.thr = [0.0, 0.0, 0.0]
+            self.curr_sp.yawtype = "twist"
+            self.curr_sp.yawrate = twist.angular.z
+
+        rospy.loginfo(f'Received twist setpoint: {self.curr_sp}')
+
+    def receive_quadstate_cb(self, state_msg):
+        self.quad_state = True
+        if self.t is None:
+            self.prev_t = self.t = state_msg.t
             return
+        else:
+            self.prev_t = self.t
+            self.t = state_msg.t
 
-        # Calcola l'intervallo di tempo
-        dt = (self.current_time - self.last_time).to_sec()
+        rospy.loginfo(f'Received QuadState: {state_msg}')
 
-        if dt == 0:
-            return
+        if self.started:
+            if self.ctrl_sp_lock.acquire(blocking=False):
+                if self.curr_sp.yawtype == "twist":
+                    self.curr_sp.yaw += (self.t - self.prev_t) * self.curr_sp.yawrate
+                self.prev_sp = self.curr_sp
+                self.ctrl_sp_lock.release()
 
-        # Calcola il comando di controllo
-        motor_msg = self.ctrl.update(self.current_state, self.cmd, dt)
+            # Il quaternione arriva come q = [x, y, z, w] e deve essere convertito a q = [w, x, y, z]
+            self.ctrl.control(
+                (self.t - self.prev_t), self.prev_sp.ctrltype, self.prev_sp.yawtype,
+                self.prev_sp.pos, self.prev_sp.vel, self.prev_sp.acc, self.prev_sp.thr,
+                self.prev_sp.yaw, self.prev_sp.yawrate,
+                state_msg.pos, state_msg.vel, state_msg.vel_dot,
+                state_msg.quat[[3, 0, 1, 2]], state_msg.omega, state_msg.omega_dot, state_msg.rpy[2]
+            )
 
-        # Pubblica i comandi ai motori
-        self.w_cmd_pub.publish(motor_msg)
-
-        # Aggiorna l'ultimo tempo
-        self.last_time = self.current_time
-
-    def spin(self):
-        rospy.spin()  # Esegui lo spin del nodo
+            # Pubblica i comandi dei motori
+            w_cmd = self.ctrl.getMotorSpeeds()
+            motor_msg = QuadMotors()
+            motor_msg.header.stamp = rospy.Time.now()
+            motor_msg.m1 = int(w_cmd[0])
+            motor_msg.m2 = int(w_cmd[1])
+            motor_msg.m3 = int(w_cmd[2])
+            motor_msg.m4 = int(w_cmd[3])
+            self.w_cmd_pub.publish(motor_msg)
 
 
 def main():
-    print("Starting QuadCtrl...")
+    rospy.loginfo("Avvio di QuadCtrl...")
+    rospy.init_node('quadctrl', anonymous=True)
     ctrl_node = QuadCtrl()
     try:
-        ctrl_node.spin()  # Esegui lo spin del nodo
-    except rospy.ROSInterruptException:
+        rospy.spin()
+    except KeyboardInterrupt:
         pass
 
-    print("Shutting down QuadCtrl...")
+    rospy.loginfo("Chiusura di QuadCtrl...")
+    rospy.signal_shutdown("Keyboard Interrupt")
 
 
 if __name__ == '__main__':
