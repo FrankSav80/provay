@@ -9,7 +9,7 @@ It uses rospy to get and set parameters.
 import rospy
 import numpy as np
 
-def Dict2ROS1Params(dictparams):
+def Dict2ROS2Params(dictparams):
     """
     Convert a Python dictionary into ROS 1 parameters and set them using rospy.
     """
@@ -36,7 +36,7 @@ def Dict2ROS1Params(dictparams):
 
         rospy.loginfo(f"{k} : {v} set as a parameter!")
 
-def ROS1Params2Dict(parameter_names):
+def ROS2Params2Dict(parameter_names):
     """
     Retrieve ROS 1 parameters as a dictionary from a list of parameter names.
     """
