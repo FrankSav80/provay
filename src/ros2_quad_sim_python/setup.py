@@ -9,16 +9,12 @@ setup(
     version='0.0.2',
     packages=find_packages(),
     data_files=[
-        ('share/ament_index/resource_index/packages', 
-            ['resource/' + package_name]),
         ('share/' + package_name, 
             ['package.xml']),
         ('share/' + package_name + '/cfg', 
-            ['cfg/rviz_flying_sensor.rviz']),
-        ('share/' + package_name + '/cfg', 
-            ['cfg/flying_sensor.json']),
-        ('share/' + package_name, 
-            glob('launch/*.launch.py'))
+            ['cfg/rviz_flying_sensor.rviz', 'cfg/flying_sensor.json']),
+        ('share/' + package_name + '/launch', 
+            glob('launch/*.launch'))
     ],
     install_requires=['setuptools', 'scipy>=1.6', 'numpy>=1.20', 'quad_sim_python'],
     zip_safe=True,
@@ -28,8 +24,10 @@ setup(
     license='MIT',
     tests_require=['pytest'],
     entry_points={
-        'console_scripts': ['quadsim = ros2_quad_sim_python.ros_quad_sim:main',
-                            'quadctrl = ros2_quad_sim_python.ros_quad_ctrl:main',
-                            'quad = ros2_quad_sim_python.ros_quad_sim_and_ctrl:main'],
+        'console_scripts': [
+            'quadsim = ros2_quad_sim_python.ros_quad_sim:main',
+            'quadctrl = ros2_quad_sim_python.ros_quad_ctrl:main',
+            'quad = ros2_quad_sim_python.ros_quad_sim_and_ctrl:main'
+        ],
     },
 )
