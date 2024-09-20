@@ -2,16 +2,11 @@ import time
 import math
 
 import sys, os
-curr_path = os.getcwd()
-if os.path.basename(curr_path) not in sys.path:
-    sys.path.append(os.path.dirname(os.getcwd()))
 
 from threading import Lock
 from copy import copy
 
-import rclpy
-from rclpy.executors import MultiThreadedExecutor
-from rclpy.time import Time
+import rospy
 
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Twist
@@ -88,12 +83,12 @@ class QuadSimAndCtrl(rqs.QuadSim):
 
         super().__init__()
 
-        self.quadsim_timer = self.create_timer(1.0, self.on_quadsim_timer)
+        self.quadsim_timer = rospy.Timer(rospy.Duration(1.0), self.on_quadsim_timer)
 
     def on_quadsim_timer(self):
         # a far from elegant way to wait for quadsim...
         if self.receive_w_cmd is None:
-            self.get_logger().info(f'Waiting for quadsim...')
+            rospy.loginfo('Waiting for quadsim...')
             return
         # Now we don't need the time anymore
         self.destroy_timer(self.quadsim_timer)
@@ -136,32 +131,32 @@ class QuadSimAndCtrl(rqs.QuadSim):
             if quad_params_list == list(self.quad_params.keys()):
                 parameters_received = True
             else:
-                self.get_logger().warn(f'Waiting for quadsim parameters!')
-                time.sleep(1)
+                rospy.logwarn('Waiting for quadsim parameters!')
+                rospy.sleep(1)
 
         # Start the controller
         self.ctrl = Controller(self.quad_params, orient=self.quad_params['orient'], params=ctrl_params)
 
-        self.receive_control_sp = self.create_subscription(
+        self.receive_control_sp = rospy.Subscriber(
             QuadControlSetPoint,
             f"/quadctrl/{self.quad_params['target_frame']}/ctrl_sp",
             self.receive_control_sp_cb,
             1)
 
-        self.receive_control_twist = self.create_subscription(
+        self.receive_control_twist = rospy.Subscriber(
             Twist,
             f"/quadctrl/{self.quad_params['target_frame']}/ctrl_twist_sp",
             self.receive_control_twist_cb,
             1)
         
-        self.imu_pub = self.create_publisher(Imu, f'/quadsim/{self.quad_params["target_frame"]}/imu',1)
+        self.imu_pub = rospy.Publisher(Imu, f'/quadsim/{self.quad_params["target_frame"]}/imu',1)
 
-        self.ctrl_loop_timer = self.create_timer(ctrl_params['Tfs'], self.on_ctrl_loop_timer)
+        self.ctrl_loop_timer = rospy.Timer(rospy.Duration(ctrl_params['Tfs']), self.on_ctrl_loop_timer)
 
     def receive_control_sp_cb(self, sp_msg):
         with self.ctrl_sp_lock:
             self.curr_sp = sp_msg
-        self.get_logger().info(f'Received control setpoint: {self.curr_sp}')
+        rospy.loginfo(f'Received control setpoint: {self.curr_sp}')
 
 
     def receive_control_twist_cb(self, twist):
@@ -176,7 +171,7 @@ class QuadSimAndCtrl(rqs.QuadSim):
             self.curr_sp.yawtype = "twist"
             self.curr_sp.yawrate = twist.angular.z
 
-        self.get_logger().info(f'Received twist setpoint: {self.curr_sp}')
+        rospy.loginfo(f'Received twist setpoint: {self.curr_sp}')
 
     def on_ctrl_loop_timer(self):
         # Lock from quadsim...
@@ -238,27 +233,22 @@ class QuadSimAndCtrl(rqs.QuadSim):
         # Send the new motor speed values
         with self.w_cmd_lock:
             self.w_cmd = [int(m) for m in w_cmd]
-            self.get_logger().debug(f'Sending w_cmd: {self.w_cmd}')
+            rospy.logdebug(f'Sending w_cmd: {self.w_cmd}')
 
 
-def main(args=None):
+def main():
     print("Starting QuadSimAndCtrl...")
-    rclpy.init(args=args)
-    
-    try:
-        quad_node = QuadSimAndCtrl()
-        executor = MultiThreadedExecutor(num_threads=4)
-        executor.add_node(quad_node)
+    rospy.init_node('quadsim_and_ctrl', anonymous=True)
 
-        try:
-            executor.spin()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            executor.shutdown()
-            quad_node.destroy_node()
-    finally:
-        rclpy.shutdown()
+    quad_node = QuadSimAndCtrl()
+
+    try:
+        rospy.spin()
+    except KeyboardInterrupt:
+        pass
+
+    print("Shutting down QuadSimAndCtrl...")
+    rospy.signal_shutdown("Simulation stopped")
 
 if __name__ == '__main__':
     main()
