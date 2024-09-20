@@ -141,7 +141,7 @@ class QuadCtrl:
         if not self.started:
             self.start_ctrl()
             self.started = True
-             rospy.loginfo('Controller started!')
+        rospy.loginfo('Controller started!')
 
         with self.ctrl_sp_lock:
             self.curr_sp = sp_msg
@@ -153,7 +153,7 @@ class QuadCtrl:
         if not self.started:
             self.start_ctrl()
             self.started = True
-            rospy.loginfo('Controller started!')
+        rospy.loginfo('Controller started!')
 
         with self.ctrl_sp_lock:
             now = rospy.Time.now()
@@ -211,7 +211,7 @@ def main():
         rospy.spin()
     except KeyboardInterrupt:
         pass
-     rospy.loginfo("Shutting down QuadCtrl...")
+    rospy.loginfo("Shutting down QuadCtrl...")
 
 
 if __name__ == '__main__':
