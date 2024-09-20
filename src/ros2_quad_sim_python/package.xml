@@ -5,7 +5,9 @@
   <description>Quadcopter simulator and controller based on Python</description>
   <maintainer email="ricardo.azambuja@gmail.com">Ricardo de Azambuja</maintainer>
   <license>MIT</license>
-
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  
   <!-- Dipendenze ROS 1 -->
   <depend>rospy</depend>
   <depend>tf</depend>
