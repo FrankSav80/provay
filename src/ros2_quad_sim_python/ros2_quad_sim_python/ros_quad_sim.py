@@ -1,7 +1,4 @@
 import sys, os
-curr_path = os.getcwd()
-if os.path.basename(curr_path) not in sys.path:
-    sys.path.append(os.path.dirname(os.getcwd()))
 
 from threading import Lock
 import numpy as np
@@ -12,14 +9,8 @@ from geometry_msgs.msg import Pose
 from sensor_msgs.msg import Imu
 from quad_sim_python_msgs.msg import QuadMotors, QuadWind, QuadState
 
-import rclpy # https://docs.ros2.org/latest/api/rclpy/api/node.html
-from rclpy.node import Node
-from rclpy.time import Time, Duration
-
-from tf2_ros import TransformException
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
-
+import rospy
+from tf import TransformListener, TransformException
 
 from quad_sim_python import Quadcopter
 from rclpy_param_helper import Dict2ROS2Params, ROS2Params2Dict
@@ -66,13 +57,9 @@ quad_params["orient"] = "ENU"
 quad_params["target_frame"] = 'flying_sensor'
 quad_params["map_frame"] = 'map'
 
-class QuadSim(Node):
+class QuadSim:
     def __init__(self):
-        super().__init__('quadsim', 
-                         allow_undeclared_parameters=True, # necessary for using set_parameters
-                         automatically_declare_parameters_from_overrides=True) # allows command line parameters
-        
-        self.get_logger().info(f'Starting quadsim...')
+        rospy.init_node('quadsim', anonymous=True)
 
         self.t = None
         self.res = None
@@ -88,15 +75,14 @@ class QuadSim(Node):
         self.prev_wind = [0,0,0]
 
 
-        self.check_flying_sensor_alive = self.create_subscription(
-            Imu,
-            '/carla/flying_sensor',
-            self.check_flying_sensor_alive_cb,
-            1)
+        self.tf_listener = TransformListener()
+        rospy.Subscriber('/carla/flying_sensor', Imu, self.check_flying_sensor_alive_cb)
 
         
     def check_flying_sensor_alive_cb(self, msg):
-        self.destroy_subscription(self.check_flying_sensor_alive) # we don't need this subscriber anymore...
+        rospy.loginfo("Flying sensor is alive, proceeding with simulation setup.")
+        rospy.Subscriber('/carla/flying_sensor', Imu, None)  
+        # Stop the subscription we don't need this subscriber anymore...
 
         # Read ROS2 parameters the user may have set 
         # E.g. (https://docs.ros.org/en/foxy/How-To-Guides/Node-arguments.html):
@@ -114,36 +100,22 @@ class QuadSim(Node):
         # I couldn't find a way to receive it without using a timer 
         # to allow me to call lookup_transform after rclpy.spin(quad_node)
         self.tf_trials = 5
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
-        self.tf_timer = self.create_timer(1.0, self.on_tf_init_timer)
-
+        rospy.Timer(rospy.Duration(1.0), self.on_tf_init_timer)
 
     def get_tf(self, t=0.0, timeout=1.0):
         try:
-            now = Time(nanoseconds=t)
-            trans = self.tf_buffer.lookup_transform(
-                quad_params["map_frame"],
-                quad_params["target_frame"],
-                now,
-                timeout=Duration(seconds=timeout))
+            now = rospy.Time.from_sec(t)
+            self.tf_listener.waitForTransform(quad_params["map_frame"], quad_params["target_frame"], now, rospy.Duration(timeout))
+            (trans, rot) = self.tf_listener.lookupTransform(quad_params["map_frame"], quad_params["target_frame"], now)
 
-            self.get_logger().debug(f'TF received {trans}')
-            curr_pos = [trans.transform.translation.x, 
-                        trans.transform.translation.y, 
-                        trans.transform.translation.z]
+            rospy.logdebug(f'TF received: trans {trans}, rot {rot}')
+            curr_pos = list(trans)
+            curr_quat = list(rot)
 
-            curr_quat = [trans.transform.rotation.x,
-                        trans.transform.rotation.y,
-                        trans.transform.rotation.z,
-                        trans.transform.rotation.w]
-
-            s = trans.header.stamp.sec
-            ns = trans.header.stamp.nanosec
-            return (s + ns/1E9), curr_pos, curr_quat
+            return now.to_sec(), curr_pos, curr_quat
 
         except TransformException as ex:
-            self.get_logger().error(f'Could not transform {quad_params["map_frame"]} to {quad_params["target_frame"]}: {ex}')
+            rospy.logerr(f'Could not transform {quad_params["map_frame"]} to {quad_params["target_frame"]}: {ex}')
 
 
     def on_tf_init_timer(self):
@@ -156,13 +128,12 @@ class QuadSim(Node):
             try:
                 init_rpy = Rotation.from_quat(init_quat).as_euler('xyz')
             except Exception as exc:
-                self.get_logger().error(f'Something went wrong with the tf {res} generating the exception {exc}')
+                rospy.logerr(f'Something went wrong with the tf {res} generating the exception {exc}')
                 raise            
             quad_params["init_pose"] = np.concatenate((init_pos,init_rpy))
             # Update ROS2 parameters
             Dict2ROS2Params(self, {"init_pose": quad_params["init_pose"]}) # the controller needs to read some parameters from here
         else:
-            self.destroy_timer(self.tf_timer)
             self.start_sim()
 
 
@@ -177,27 +148,17 @@ class QuadSim(Node):
         new_params = {key: self.quad.params[key] for key in self.quad.params if key not in params}
         Dict2ROS2Params(self, new_params) # some parameters are created by the quad object
 
-        self.quadpos_pub = self.create_publisher(Pose, f'/carla/{quad_params["target_frame"]}/control/set_transform',1)
-        self.quadstate_pub = self.create_publisher(QuadState, f'/quadsim/{quad_params["target_frame"]}/state',1)
+        self.quadpos_pub = rospy.Publisher(f'/carla/{quad_params["target_frame"]}/control/set_transform', Pose, queue_size=1)
+        self.quadstate_pub = rospy.Publisher(f'/quadsim/{quad_params["target_frame"]}/state', QuadState, queue_size=1)
 
-        self.receive_w_cmd = self.create_subscription(
-            QuadMotors,
-            f'/quadsim/{quad_params["target_frame"]}/w_cmd',
-            self.receive_w_cmd_cb,
-            1)
+        rospy.Subscriber(f'/quadsim/{quad_params["target_frame"]}/w_cmd', QuadMotors, self.receive_w_cmd_cb)
+        rospy.Subscriber(f'/quadsim/{quad_params["target_frame"]}/wind', QuadWind, self.receive_wind_cb)
 
-        self.receive_wind = self.create_subscription(
-            QuadWind,
-            f'/quadsim/{quad_params["target_frame"]}/wind',
-            self.receive_wind_cb,
-            1)
+        rospy.Timer(rospy.Duration(self.Ts), self.on_sim_loop)
+        rospy.Timer(rospy.Duration(params['Tfs']), self.on_sim_publish_fs)
+        rospy.Timer(rospy.Duration(params['Tp']), self.on_sim_publish_pose)
 
-        self.sim_loop_timer = self.create_timer(self.Ts, self.on_sim_loop)
-        self.sim_publish_full_state_timer = self.create_timer(params['Tfs'], self.on_sim_publish_fs)
-        self.sim_publish_pose_timer = self.create_timer(params['Tp'], self.on_sim_publish_pose)
-
-        self.get_logger().info(f'Simulator started!')
-
+        rospy.loginfo('Simulator started!')
 
     def receive_w_cmd_cb(self, motor_msg):
         with self.w_cmd_lock:
@@ -205,7 +166,7 @@ class QuadSim(Node):
                           motor_msg.m2,
                           motor_msg.m3,
                           motor_msg.m4]
-        self.get_logger().debug(f'Received w_cmd: {self.w_cmd}')
+        rospy.logdebug(f'Received w_cmd: {self.w_cmd}')
 
 
     def receive_wind_cb(self, wind_msg):
@@ -213,7 +174,7 @@ class QuadSim(Node):
             self.wind = [wind_msg.vel_w, 
                          wind_msg.head_w,
                          wind_msg.elev_w]
-        self.get_logger().debug(f'Received wind: {self.wind}')
+        rospy.logdebug(f'Received wind: {self.wind}')
 
 
     def on_sim_loop(self):
@@ -245,7 +206,7 @@ class QuadSim(Node):
                 self.t += self.Ts
                 self.sim_pub_lock.release()
 
-        self.get_logger().debug(f'Quad State: {self.curr_state}')
+        rospy.logdebug(f'Quad State: {self.curr_state}')
 
 
     def on_sim_publish_pose(self):
@@ -269,7 +230,7 @@ class QuadSim(Node):
             return
         state_msg = QuadState()
         with self.sim_pub_lock:
-            now = Time(nanoseconds=self.t*1E9).to_msg()
+            now = rospy.Time.from_sec(self.t)
             state_msg.header.stamp = now
             state_msg.t = self.t
             state_msg.pos = self.curr_state[0:3][:]
@@ -281,22 +242,22 @@ class QuadSim(Node):
             state_msg.omega_dot = self.curr_state[19:22][:]
 
         self.quadstate_pub.publish(state_msg)
-        self.get_logger().debug(f'Quad State: {self.curr_state}')
+        rospy.logdebug(f'Quad State: {self.curr_state}')
 
 
 def main():
     print("Starting QuadSim...")
-    rclpy.init()
+    rospy.init_node('quadsim', anonymous=True)
 
     quad_node = QuadSim()
     try:
-        rclpy.spin(quad_node)
+        rospy.spin()
     except KeyboardInterrupt:
         pass
 
 
     print("Shutting down QuadSim...")
-    rclpy.shutdown()
+    rospy.signal_shutdown("Simulation stopped")
 
 
 if __name__ == '__main__':
