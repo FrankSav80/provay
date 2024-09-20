@@ -1,0 +1,13 @@
+<launch>
+<!-- Declare launch arguments -->
+<arg name="init_pose" default="[0,0,2,0,0,0]" doc="Initial pose" />
+<arg name="target_frame" default="flying_sensor" doc="Target frame for the flying sensor" />
+<arg name="map_frame" default="map" doc="Map frame for the flying sensor" />
+
+    <!-- Launch the node -->
+<node pkg="ros2_quad_sim_python" type="quadsim" name="quadsim" output="screen">
+<param name="init_pose" value="$(arg init_pose)" />
+<param name="target_frame" value="$(arg target_frame)" />
+<param name="map_frame" value="$(arg map_frame)" />
+</node>
+</launch>
