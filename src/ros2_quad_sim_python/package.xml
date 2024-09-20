@@ -11,6 +11,7 @@
   <!-- Dipendenze ROS 1 -->
   <depend>rospy</depend>
   <depend>tf</depend>
+  <depend>std_msgs</depend>
 
   <!-- Dipendenze messaggi -->
   <depend>geometry_msgs</depend>
