@@ -1,1 +1,96 @@
+<launch>
+<!-- Dichiaro i parametri -->
+<arg name="host" default="carla-container.local" />
+<arg name="town" default="Town01" />
+<arg name="objects_definition_file" default="$(find quad_sim_python)/cfg/flying_sensor.json" />
 
+    <!-- Includo i launch file di CARLA-ROS-bridge -->
+<include file="$(find carla_ros_bridge)/catkin_ws/src/ros-bridge/carla_ros_bridge/launch/carla_ros_bridge.launch">
+<arg name="town" value="$(arg town)" />
+<arg name="host" value="$(arg host)" />
+</include>
+
+    <!-- Includo il file launch per spawnare oggetti in CARLA -->
+<include file="$(find carla_spawn_objects)/launch/carla_spawn_objects.launch">
+<arg name="objects_definition_file" value="$(arg objects_definition_file)" />
+</include>
+
+    <!-- Quad parameters -->
+<arg name="target_frame" default="flying_sensor" />
+<arg name="map_frame" default="map" />
+<arg name="init_pose" default="[0,0,100,0,0,0]" />
+<arg name="Px" default="5.0" />
+<arg name="Py" default="5.0" />
+<arg name="Pz" default="2.0" />
+<arg name="Pxdot" default="5.0" />
+<arg name="Dxdot" default="0.5" />
+<arg name="Ixdot" default="5.0" />
+<arg name="Pydot" default="5.0" />
+<arg name="Dydot" default="0.5" />
+<arg name="Iydot" default="5.0" />
+<arg name="Pzdot" default="4.0" />
+<arg name="Dzdot" default="0.5" />
+<arg name="Izdot" default="5.0" />
+<arg name="Pphi" default="4.0" />
+<arg name="Ptheta" default="4.0" />
+<arg name="Ppsi" default="1.5" />
+<arg name="Pp" default="1.5" />
+<arg name="Dp" default="0.04" />
+<arg name="Pq" default="1.5" />
+<arg name="Dq" default="0.04" />
+<arg name="Pr" default="1.0" />
+<arg name="Dr" default="0.1" />
+<arg name="uMax" default="50.0" />
+<arg name="vMax" default="50.0" />
+<arg name="wMax" default="50.0" />
+<arg name="saturateVel_separately" default="true" />
+<arg name="tiltMax" default="30.0" />
+<arg name="pMax" default="200.0" />
+<arg name="qMax" default="200.0" />
+<arg name="rMax" default="150.0" />
+<arg name="minTotalVel_YawFollow" default="0.1" />
+<arg name="useIntegral" default="true" />
+
+    <!-- Include quad launch file -->
+<include file="$(find quad_sim_python)/launch/quad.launch">
+<arg name="target_frame" value="$(arg target_frame)" />
+<arg name="map_frame" value="$(arg map_frame)" />
+<arg name="init_pose" value="$(arg init_pose)" />
+<arg name="Px" value="$(arg Px)" />
+<arg name="Py" value="$(arg Py)" />
+<arg name="Pz" value="$(arg Pz)" />
+<arg name="Pxdot" value="$(arg Pxdot)" />
+<arg name="Dxdot" value="$(arg Dxdot)" />
+<arg name="Ixdot" value="$(arg Ixdot)" />
+<arg name="Pydot" value="$(arg Pydot)" />
+<arg name="Dydot" value="$(arg Dydot)" />
+<arg name="Iydot" value="$(arg Iydot)" />
+<arg name="Pzdot" value="$(arg Pzdot)" />
+<arg name="Dzdot" value="$(arg Dzdot)" />
+<arg name="Izdot" value="$(arg Izdot)" />
+<arg name="Pphi" value="$(arg Pphi)" />
+<arg name="Ptheta" value="$(arg Ptheta)" />
+<arg name="Ppsi" value="$(arg Ppsi)" />
+<arg name="Pp" value="$(arg Pp)" />
+<arg name="Dp" value="$(arg Dp)" />
+<arg name="Pq" value="$(arg Pq)" />
+<arg name="Dq" value="$(arg Dq)" />
+<arg name="Pr" value="$(arg Pr)" />
+<arg name="Dr" value="$(arg Dr)" />
+<arg name="uMax" value="$(arg uMax)" />
+<arg name="vMax" value="$(arg vMax)" />
+<arg name="wMax" value="$(arg wMax)" />
+<arg name="saturateVel_separately" value="$(arg saturateVel_separately)" />
+<arg name="tiltMax" value="$(arg tiltMax)" />
+<arg name="pMax" value="$(arg pMax)" />
+<arg name="qMax" value="$(arg qMax)" />
+<arg name="rMax" value="$(arg rMax)" />
+<arg name="minTotalVel_YawFollow" value="$(arg minTotalVel_YawFollow)" />
+<arg name="useIntegral" value="$(arg useIntegral)" />
+</include>
+
+    <!-- Include RViz2 configuration -->
+<node pkg="rviz" type="rviz" name="rviz" output="screen">
+<param name="config" value="$(find quad_sim_python)/cfg/rviz_flying_sensor.rviz" />
+</node>
+</launch>
