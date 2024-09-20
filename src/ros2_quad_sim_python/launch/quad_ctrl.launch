@@ -1,0 +1,13 @@
+<launch>
+    <!-- Dichiarazione dei parametri -->
+    <arg name="Px" default="2.0" doc="Position P gain for x"/>
+    <arg name="Py" default="2.0" doc="Position P gain for y"/>
+    <arg name="Pz" default="1.0" doc="Position P gain for z"/>
+
+    <!-- Launch the node -->
+    <node pkg="ros2_quad_sim_python" type="quadctrl" name="quadctrl" output="screen">
+        <param name="Px" value="$(arg Px)"/>
+        <param name="Py" value="$(arg Py)"/>
+        <param name="Pz" value="$(arg Pz)"/>
+    </node>
+</launch>
