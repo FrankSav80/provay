@@ -10,7 +10,7 @@ from sensor_msgs.msg import Imu
 from quad_sim_python_msgs.msg import QuadMotors, QuadWind, QuadState
 
 import rospy
-from tf import TransformListener, TransformException
+from tf import TransformListener, Exception as TransformException
 
 from quad_sim_python import Quadcopter
 from rclpy_param_helper import Dict2ROS2Params, ROS2Params2Dict
