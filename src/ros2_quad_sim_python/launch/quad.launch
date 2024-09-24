@@ -36,7 +36,7 @@
 <arg name="useIntegral" default="true" />
 
     <!-- Launch the node -->
-<node pkg="ros2_quad_sim_python" type="ros_quad_sim_and_ctrl" name="quadsim" output="screen">
+<node pkg="ros2_quad_sim_python" type="ros_quad_sim_and_ctrl.py" name="quadsim" output="screen">
 <param name="target_frame" value="$(arg target_frame)" />
 <param name="map_frame" value="$(arg map_frame)" />
 <param name="init_pose" value="$(arg init_pose)" />
