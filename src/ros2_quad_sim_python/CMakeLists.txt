@@ -15,6 +15,9 @@ catkin_package(
   CATKIN_DEPENDS rospy std_msgs geometry_msgs sensor_msgs
 )
 
+# Includi il setup Python per il pacchetto
+catkin_python_setup()
+
 # Installa la cartella ros2_quad_sim_python nella directory dist-packages
 install(DIRECTORY
   src/ros2_quad_sim_python/ros2_quad_sim_python/
