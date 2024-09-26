@@ -87,13 +87,13 @@ class QuadSim:
         # E.g. (https://docs.ros.org/en/foxy/How-To-Guides/Node-arguments.html):
         # --ros-args -p init_pose:=[0,0,0,0,0,0])
         # --ros-args --params-file params.yaml
-        read_params = ROS2Params2Dict(self, 'quadsim', list(quad_params.keys()) + ["init_pose"])
+        read_params = ROS2Params2Dict(list(quad_params.keys()) + ["init_pose"])
         for k,v in read_params.items():
             # Update local parameters
             quad_params[k] = v
         
         # Update ROS2 parameters
-        Dict2ROS2Params(self, quad_params) # the controller needs to read some parameters from here
+        Dict2ROS2Params(quad_params) # the controller needs to read some parameters from here
 
         # Timer for the tf
         # I couldn't find a way to receive it without using a timer 
@@ -131,13 +131,13 @@ class QuadSim:
                 raise            
             quad_params["init_pose"] = np.concatenate((init_pos,init_rpy))
             # Update ROS2 parameters
-            Dict2ROS2Params(self, {"init_pose": quad_params["init_pose"]}) # the controller needs to read some parameters from here
+            Dict2ROS2Params({"init_pose": quad_params["init_pose"]}) # the controller needs to read some parameters from here
         else:
             self.start_sim()
 
 
     def start_sim(self):   
-        params = ROS2Params2Dict(self, 'quadsim', quad_params.keys())
+        params = ROS2Params2Dict(quad_params.keys())
         init_pose = np.array(params['init_pose']) # x0, y0, z0, phi0, theta0, psi0
         init_twist = np.array([0,0,0,0,0,0]) # xdot, ydot, zdot, p, q, r
         init_states = np.hstack((init_pose,init_twist))
@@ -145,7 +145,7 @@ class QuadSim:
         self.quad = Quadcopter(self.t, init_states, params=params.copy(), orient=params['orient'])
         self.w_cmd = [self.quad.params['w_hover']]*4
         new_params = {key: self.quad.params[key] for key in self.quad.params if key not in params}
-        Dict2ROS2Params(self, new_params) # some parameters are created by the quad object
+        Dict2ROS2Params(new_params) # some parameters are created by the quad object
 
         self.quadpos_pub = rospy.Publisher(f'/carla/{quad_params["target_frame"]}/control/set_transform', Pose, queue_size=1)
         self.quadstate_pub = rospy.Publisher(f'/quadsim/{quad_params["target_frame"]}/state', QuadState, queue_size=1)
