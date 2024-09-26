@@ -59,7 +59,6 @@ quad_params["map_frame"] = 'map'
 
 class QuadSim:
     def __init__(self):
-        rospy.init_node('quadsim', anonymous=True)
 
         self.t = None
         self.res = None
@@ -247,7 +246,6 @@ class QuadSim:
 
 def main():
     print("Starting QuadSim...")
-    rospy.init_node('quadsim', anonymous=True)
 
     quad_node = QuadSim()
     try:
