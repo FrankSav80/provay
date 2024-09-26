@@ -7,7 +7,8 @@ package_name = 'ros2_quad_sim_python'
 setup(
     name=package_name,
     version='0.0.1',
-    packages=find_packages(),
+    # Include the package and sub-packages
+    packages=find_packages(include=[package_name, f'{package_name}.*']),
     data_files=[
         ('share/' + package_name, 
             ['package.xml']),
