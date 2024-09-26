@@ -90,19 +90,19 @@ class QuadCtrl:
         # E.g. (https://docs.ros.org/en/foxy/How-To-Guides/Node-arguments.html):
         # --ros-args -p Px:=5
         # --ros-args --params-file params.yaml
-        read_params = ROS2Params2Dict(self, 'quadctrl', ctrl_params.keys())
+        read_params = ROS2Params2Dict(ctrl_params.keys())
         for k,v in read_params.items():
             # Update local parameters
             ctrl_params[k] = v
 
         # Update ROS2 parameters
-        Dict2ROS2Params(self, ctrl_params) # the controller needs to read some parameters from here
+        Dict2ROS2Params(ctrl_params) # the controller needs to read some parameters from here
 
         parameters_received = False
         while not parameters_received:
             quad_params_list = ['mB', 'g', 'IB', 'maxThr', 'minThr', 'orient', 'mixerFMinv', 'minWmotor', 'maxWmotor',
                                 'target_frame']
-            self.quad_params = ROS2Params2Dict(self, 'quadsim', quad_params_list)
+            self.quad_params = ROS2Params2Dict(quad_params_list)
             if quad_params_list == list(self.quad_params.keys()):
                 parameters_received = True
             else:
@@ -131,7 +131,7 @@ class QuadCtrl:
         self.w_cmd_pub = rospy.Publisher(QuadMotors, f"/quadsim/{self.quad_params['target_frame']}/w_cmd",1)
 
     def start_ctrl(self):
-        params = ROS2Params2Dict(self, 'quadctrl', ctrl_params.keys())
+        params = ROS2Params2Dict(ctrl_params.keys())
         self.ctrl = Controller(self.quad_params, orient=self.quad_params['orient'], params=params)
 
 
