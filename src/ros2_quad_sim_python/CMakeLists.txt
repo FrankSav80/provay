@@ -18,13 +18,6 @@ catkin_package(
 # Includi il setup Python per il pacchetto
 catkin_python_setup()
 
-# Installa la cartella ros2_quad_sim_python nella directory dist-packages
-install(DIRECTORY
-  src/ros2_quad_sim_python/ros2_quad_sim_python/
-  DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}/ros2_quad_sim_python
-  FILES_MATCHING PATTERN "*.py"  # Se vuoi installare solo i file .py
-)
-
 ## Installazione dei file di configurazione e di lancio
 install(DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
