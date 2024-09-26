@@ -115,19 +115,19 @@ class QuadSimAndCtrl(rqs.QuadSim):
         # --ros-args -p Px:=5
         # --ros-args --params-file params.yaml
         # Here 'quadsim' is used because this class inherits from ros_quad_sim.QuadSim
-        read_params = ROS2Params2Dict(self, 'quadsim', list(ctrl_params.keys())+["Tfs"])
+        read_params = ROS2Params2Dict(list(ctrl_params.keys())+["Tfs"])
         for k,v in read_params.items():
             # Update local parameters
             ctrl_params[k] = v
         
         # Update ROS2 parameters
-        Dict2ROS2Params(self, ctrl_params) # the controller needs to read some parameters from here
+        Dict2ROS2Params(ctrl_params) # the controller needs to read some parameters from here
 
         parameters_received = False
         while not parameters_received:
             quad_params_list = ['mB', 'g', 'IB', 'maxThr', 'minThr', 'orient', 'mixerFMinv', 'minWmotor', 'maxWmotor', 
                                 'target_frame']
-            self.quad_params = ROS2Params2Dict(self, 'quadsim', quad_params_list)
+            self.quad_params = ROS2Params2Dict(quad_params_list)
             if quad_params_list == list(self.quad_params.keys()):
                 parameters_received = True
             else:
