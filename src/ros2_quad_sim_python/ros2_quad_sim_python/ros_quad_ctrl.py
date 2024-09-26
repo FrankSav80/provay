@@ -76,8 +76,6 @@ class QuadCtrl:
 
     def __init__(self):
 
-        rospy.init_node('quadctrl', anonymous=True)
-
         self.started = False
         self.quad_state = False
         self.t = None
