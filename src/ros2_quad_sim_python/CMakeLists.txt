@@ -19,7 +19,7 @@ catkin_package(
 install(DIRECTORY
   src/ros2_quad_sim_python/ros2_quad_sim_python/
   DESTINATION ${CATKIN_PACKAGE_PYTHON_DESTINATION}/ros2_quad_sim_python
-  FILES_MATCHING PATTERN "*.py"  # Se vuoi installare solo i file .py
+  FILES_MATCHING PATTERN "*.py")  # Se vuoi installare solo i file .py
 
 ## Installazione dei file di configurazione e di lancio
 install(DIRECTORY launch
