@@ -43,29 +43,49 @@ def Dict2ROS2Params(dictparams):
         rospy.loginfo(f"Parametro {name} : {value} impostato!")  # Logging
 
 
-def ROS2Params2Dict(parameter_names): 
+def ROS2Params2Dict(parameter_names):
     """
     Retrieve ROS 1 parameters as a dictionary from a list of parameter names.
-    Handles array shapes to reconstruct multidimensional arrays.
+    Handles both namespaced and non-namespaced parameters.
     """
     param_dict = {}
+    quadsim_namespace = "/quadsim/"  # Namespace da usare per i parametri quadsim
     
-    # Logica per recuperare i parametri da ROS1
     for name in parameter_names:
+        # Prima cerca il parametro senza il namespace
         try:
             param_value = rospy.get_param(name)
             param_dict[name] = param_value
             rospy.loginfo(f"Retrieved parameter {name}: {param_value}")
 
-            # Controlla se esiste una forma associata
+            # Controlla se esiste una forma associata per array/matrici
             shape_name = f"{name}___shape"
             if rospy.has_param(shape_name):
                 shape = rospy.get_param(shape_name)
                 param_dict[name] = np.array(param_value).reshape(shape)
                 rospy.loginfo(f"Reshaped parameter {name} to shape {shape}")
 
+        # Se non esiste senza namespace, cerca nel namespace quadsim
         except KeyError:
-            rospy.logwarn(f"Parameter {name} is not available!")
+            rospy.logwarn(f"Parameter {name} not found, trying with namespace quadsim.")
+            
+            try:
+                full_name = quadsim_namespace + name
+                param_value = rospy.get_param(full_name)
+                param_dict[name] = param_value
+                rospy.loginfo(f"Retrieved parameter {full_name}: {param_value}")
+
+                # Controlla se esiste una forma associata per array/matrici
+                shape_name = f"{full_name}___shape"
+                if rospy.has_param(shape_name):
+                    shape = rospy.get_param(shape_name)
+                    param_dict[name] = np.array(param_value).reshape(shape)
+                    rospy.loginfo(f"Reshaped parameter {full_name} to shape {shape}")
+
+            except KeyError:
+                rospy.logwarn(f"Parameter {name} is not available even in quadsim namespace!")
+            except Exception as e:
+                rospy.logerr(f"Error retrieving parameter {full_name}: {e}")
         except Exception as e:
             rospy.logerr(f"Error retrieving parameter {name}: {e}")
 
