@@ -75,12 +75,12 @@ class QuadSim:
 
 
         self.tf_listener = TransformListener()
-        rospy.Subscriber('/carla/flying_sensor', Imu, self.check_flying_sensor_alive_cb)
+        self.check_flying_sensor_alive = rospy.Subscriber('/carla/flying_sensor', Imu, self.check_flying_sensor_alive_cb)
 
         
     def check_flying_sensor_alive_cb(self, msg):
         rospy.loginfo("Flying sensor is alive, proceeding with simulation setup.")
-        rospy.Subscriber('/carla/flying_sensor', Imu, None)  
+        self.check_flying_sensor_alive.unregister()  
         # Stop the subscription we don't need this subscriber anymore...
 
         # Read ROS2 parameters the user may have set 
