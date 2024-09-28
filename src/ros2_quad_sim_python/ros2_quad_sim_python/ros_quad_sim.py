@@ -152,8 +152,7 @@ class QuadSim:
     def start_sim(self): 
         rospy.loginfo("Entrato nella funzione start_sim.")
         params = ROS2Params2Dict(quad_params.keys())
-      
-        rospy.loginfo(f"init_pose: {init_pose}")  # Log per controllare il contenuto di init_states
+
         rospy.loginfo(f"params: {params}")  # Log per verificare i parametri
         rospy.loginfo(f"cosa_va_in_pose: params['init_pose']")
       
