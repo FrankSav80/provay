@@ -1,5 +1,7 @@
 import sys, os
 
+import ast
+
 from threading import Lock
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -152,15 +154,16 @@ class QuadSim:
     def start_sim(self): 
         rospy.loginfo("Entrato nella funzione start_sim.")
         params = ROS2Params2Dict(quad_params.keys())
-
-        rospy.loginfo(f"params: {params}")  # Log per verificare i parametri
-        rospy.loginfo(f"cosa_va_in_pose: params['init_pose']")
       
-        init_pose = np.array(params['init_pose']) # x0, y0, z0, phi0, theta0, psi0
-        rospy.loginfo(f'Initial pose: {init_pose}')
+        # Verifica se 'init_pose' è una stringa e convertila in un array
+        if isinstance(params['init_pose'], str):
+            init_pose = np.array(ast.literal_eval(params['init_pose']))  # Converte da stringa a lista
+        else:
+            init_pose = np.array(params['init_pose'])  # x0, y0, z0, phi0, theta0, psi0 (Se è già un array, mantienilo così)
+        
         init_twist = np.array([0,0,0,0,0,0]) # xdot, ydot, zdot, p, q, r
         init_states = np.hstack((init_pose,init_twist))
-        rospy.loginfo(f'Initial pose: {init_states}')
+       
         self.Ts = params['Ts']
         self.quad = Quadcopter(self.t, init_states, params=params.copy(), orient=params['orient'])
         self.w_cmd = [self.quad.params['w_hover']]*4
