@@ -118,7 +118,7 @@ class QuadSim:
             rospy.logerr(f'Could not transform {quad_params["map_frame"]} to {quad_params["target_frame"]}: {ex}')
 
 
-    def on_tf_init_timer(self,event):
+    def on_tf_init_timer(self, event):
         rospy.loginfo("Entrato nella funzione on_tf_init_timer.")
         res = self.get_tf()
         if res is None:
@@ -196,7 +196,7 @@ class QuadSim:
         rospy.logdebug(f'Received wind: {self.wind}')
 
 
-    def on_sim_loop(self):
+    def on_sim_loop(self, event):
         res = self.get_tf()
 
         if res is None:
@@ -228,7 +228,7 @@ class QuadSim:
         rospy.logdebug(f'Quad State: {self.curr_state}')
 
 
-    def on_sim_publish_pose(self):
+    def on_sim_publish_pose(self, event):
         if self.t is None:
             return
         pose_msg = Pose()
@@ -244,7 +244,7 @@ class QuadSim:
         self.quadpos_pub.publish(pose_msg)
 
 
-    def on_sim_publish_fs(self):
+    def on_sim_publish_fs(self, event):
         if self.t is None:
             return
         state_msg = QuadState()
