@@ -126,14 +126,14 @@ class QuadSim:
         
         self.t, init_pos, init_quat = res
       
-      # Verifica che i valori restituiti siano corretti
+        # Verifica che i valori restituiti siano corretti
         if len(init_pos) != 3:
-           rospy.logerr(f"TF returned incorrect values: init_pos={init_pos}")
-           return
+            rospy.logerr(f"TF returned incorrect values: init_pos={init_pos}")
+            return
           
         if len(init_quat) != 4:
-           rospy.logerr(f"TF returned incorrect values: init_quat={init_quat}")
-           return  
+            rospy.logerr(f"TF returned incorrect values: init_quat={init_quat}")
+            return  
       
         if "init_pose" not in quad_params:
             try:
@@ -150,18 +150,18 @@ class QuadSim:
 
 
     def start_sim(self): 
-      rospy.loginfo("Entrato nella funzione start_sim.")
+        rospy.loginfo("Entrato nella funzione start_sim.")
         params = ROS2Params2Dict(quad_params.keys())
       
-       rospy.loginfo(f"init_pose: {init_pose}")  # Log per controllare il contenuto di init_states
-       rospy.loginfo(f"params: {params}")  # Log per verificare i parametri
-       rospy.loginfo(f"cosa_va_in_pose: params['init_pose']")
+        rospy.loginfo(f"init_pose: {init_pose}")  # Log per controllare il contenuto di init_states
+        rospy.loginfo(f"params: {params}")  # Log per verificare i parametri
+        rospy.loginfo(f"cosa_va_in_pose: params['init_pose']")
       
         init_pose = np.array(params['init_pose']) # x0, y0, z0, phi0, theta0, psi0
-       rospy.loginfo(f'Initial pose: {init_pose}')
+        rospy.loginfo(f'Initial pose: {init_pose}')
         init_twist = np.array([0,0,0,0,0,0]) # xdot, ydot, zdot, p, q, r
         init_states = np.hstack((init_pose,init_twist))
-       rospy.loginfo(f'Initial pose: {init_states}')
+        rospy.loginfo(f'Initial pose: {init_states}')
         self.Ts = params['Ts']
         self.quad = Quadcopter(self.t, init_states, params=params.copy(), orient=params['orient'])
         self.w_cmd = [self.quad.params['w_hover']]*4
