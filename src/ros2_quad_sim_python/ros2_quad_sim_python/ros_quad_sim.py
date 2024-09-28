@@ -117,7 +117,7 @@ class QuadSim:
             rospy.logerr(f'Could not transform {quad_params["map_frame"]} to {quad_params["target_frame"]}: {ex}')
 
 
-    def on_tf_init_timer(self):
+    def on_tf_init_timer(self,event):
         res = self.get_tf()
         if res is None:
             return
