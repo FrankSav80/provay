@@ -85,7 +85,7 @@ class QuadSimAndCtrl(rqs.QuadSim):
 
         self.quadsim_timer = rospy.Timer(rospy.Duration(1.0), self.on_quadsim_timer)
 
-    def on_quadsim_timer(self):
+    def on_quadsim_timer(self,event):
         # a far from elegant way to wait for quadsim...
         if self.receive_w_cmd is None:
             rospy.loginfo('Waiting for quadsim...')
