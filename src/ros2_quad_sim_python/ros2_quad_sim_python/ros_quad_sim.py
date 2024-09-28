@@ -102,6 +102,7 @@ class QuadSim:
         rospy.Timer(rospy.Duration(1.0), self.on_tf_init_timer)
 
     def get_tf(self, t=0.0, timeout=1.0):
+      rospy.loginfo("Entrato nella funzione get_tf.")
         try:
             now = rospy.Time.from_sec(t)
             self.tf_listener.waitForTransform(quad_params["map_frame"], quad_params["target_frame"], now, rospy.Duration(timeout))
@@ -118,11 +119,22 @@ class QuadSim:
 
 
     def on_tf_init_timer(self,event):
+      rospy.loginfo("Entrato nella funzione on_tf_init_timer.")
         res = self.get_tf()
         if res is None:
             return
         
         self.t, init_pos, init_quat = res
+      
+      # Verifica che i valori restituiti siano corretti
+        if len(init_pos) != 3:
+           rospy.logerr(f"TF returned incorrect values: init_pos={init_pos}")
+           return
+          
+        if len(init_quat) != 4:
+           rospy.logerr(f"TF returned incorrect values: init_quat={init_quat}")
+           return  
+      
         if "init_pose" not in quad_params:
             try:
                 init_rpy = Rotation.from_quat(init_quat).as_euler('xyz')
@@ -130,17 +142,26 @@ class QuadSim:
                 rospy.logerr(f'Something went wrong with the tf {res} generating the exception {exc}')
                 raise            
             quad_params["init_pose"] = np.concatenate((init_pos,init_rpy))
+            rospy.loginfo(f'Generated init_pose: {quad_params["init_pose"]}')
             # Update ROS2 parameters
             Dict2ROS2Params({"init_pose": quad_params["init_pose"]}) # the controller needs to read some parameters from here
         else:
             self.start_sim()
 
 
-    def start_sim(self):   
+    def start_sim(self): 
+      rospy.loginfo("Entrato nella funzione start_sim.")
         params = ROS2Params2Dict(quad_params.keys())
+      
+       rospy.loginfo(f"init_pose: {init_pose}")  # Log per controllare il contenuto di init_states
+       rospy.loginfo(f"params: {params}")  # Log per verificare i parametri
+       rospy.loginfo(f"cosa_va_in_pose: params['init_pose']")
+      
         init_pose = np.array(params['init_pose']) # x0, y0, z0, phi0, theta0, psi0
+       rospy.loginfo(f'Initial pose: {init_pose}')
         init_twist = np.array([0,0,0,0,0,0]) # xdot, ydot, zdot, p, q, r
         init_states = np.hstack((init_pose,init_twist))
+       rospy.loginfo(f'Initial pose: {init_states}')
         self.Ts = params['Ts']
         self.quad = Quadcopter(self.t, init_states, params=params.copy(), orient=params['orient'])
         self.w_cmd = [self.quad.params['w_hover']]*4
