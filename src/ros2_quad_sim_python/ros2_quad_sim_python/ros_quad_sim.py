@@ -82,10 +82,10 @@ class QuadSim:
 
     def check_flying_sensor_alive_cb(self, msg):
         rospy.loginfo("Flying sensor is alive, proceeding with simulation setup.")
-        self.check_flying_sensor_alive.unregister()  
+        self.check_flying_sensor_alive.unregister()
         # Stop the subscription we don't need this subscriber anymore...
 
-        # Read ROS2 parameters the user may have set 
+        # Read ROS2 parameters the user may have set
         # E.g. (https://docs.ros.org/en/foxy/How-To-Guides/Node-arguments.html):
         # --ros-args -p init_pose:=[0,0,0,0,0,0])
         # --ros-args --params-file params.yaml
@@ -135,7 +135,7 @@ class QuadSim:
 
         if len(init_quat) != 4:
             rospy.logerr(f"TF returned incorrect values: init_quat={init_quat}")
-            return  
+            return
 
         if "init_pose" not in quad_params:
             try:
