@@ -79,7 +79,7 @@ class QuadSim:
         self.tf_listener = TransformListener()
         self.check_flying_sensor_alive = rospy.Subscriber('/carla/flying_sensor', Imu, self.check_flying_sensor_alive_cb)
 
-        
+
     def check_flying_sensor_alive_cb(self, msg):
         rospy.loginfo("Flying sensor is alive, proceeding with simulation setup.")
         self.check_flying_sensor_alive.unregister()  
@@ -93,12 +93,12 @@ class QuadSim:
         for k,v in read_params.items():
             # Update local parameters
             quad_params[k] = v
-        
+
         # Update ROS2 parameters
         Dict2ROS2Params(quad_params) # the controller needs to read some parameters from here
 
         # Timer for the tf
-        # I couldn't find a way to receive it without using a timer 
+        # I couldn't find a way to receive it without using a timer
         # to allow me to call lookup_transform after rclpy.spin(quad_node)
         self.tf_trials = 5
         rospy.Timer(rospy.Duration(1.0), self.on_tf_init_timer)
@@ -125,24 +125,24 @@ class QuadSim:
         res = self.get_tf()
         if res is None:
             return
-        
+
         self.t, init_pos, init_quat = res
-      
+
         # Verifica che i valori restituiti siano corretti
         if len(init_pos) != 3:
             rospy.logerr(f"TF returned incorrect values: init_pos={init_pos}")
             return
-          
+
         if len(init_quat) != 4:
             rospy.logerr(f"TF returned incorrect values: init_quat={init_quat}")
             return  
-      
+
         if "init_pose" not in quad_params:
             try:
                 init_rpy = Rotation.from_quat(init_quat).as_euler('xyz')
             except Exception as exc:
                 rospy.logerr(f'Something went wrong with the tf {res} generating the exception {exc}')
-                raise            
+                raise
             quad_params["init_pose"] = np.concatenate((init_pos,init_rpy))
             rospy.loginfo(f'Generated init_pose: {quad_params["init_pose"]}')
             # Update ROS2 parameters
@@ -151,19 +151,19 @@ class QuadSim:
             self.start_sim()
 
 
-    def start_sim(self): 
+    def start_sim(self):
         rospy.loginfo("Entrato nella funzione start_sim.")
         params = ROS2Params2Dict(quad_params.keys())
-      
+
         # Verifica se 'init_pose' è una stringa e convertila in un array
         if isinstance(params['init_pose'], str):
             init_pose = np.array(ast.literal_eval(params['init_pose']))  # Converte da stringa a lista
         else:
             init_pose = np.array(params['init_pose'])  # x0, y0, z0, phi0, theta0, psi0 (Se è già un array, mantienilo così)
-        
+
         init_twist = np.array([0,0,0,0,0,0]) # xdot, ydot, zdot, p, q, r
         init_states = np.hstack((init_pose,init_twist))
-       
+
         self.Ts = params['Ts']
         self.quad = Quadcopter(self.t, init_states, params=params.copy(), orient=params['orient'])
         self.w_cmd = [self.quad.params['w_hover']]*4
@@ -184,7 +184,7 @@ class QuadSim:
 
     def receive_w_cmd_cb(self, motor_msg):
         with self.w_cmd_lock:
-            self.w_cmd = [motor_msg.m1, 
+            self.w_cmd = [motor_msg.m1,
                           motor_msg.m2,
                           motor_msg.m3,
                           motor_msg.m4]
@@ -193,7 +193,7 @@ class QuadSim:
 
     def receive_wind_cb(self, wind_msg):
         with self.wind_lock:
-            self.wind = [wind_msg.vel_w, 
+            self.wind = [wind_msg.vel_w,
                          wind_msg.head_w,
                          wind_msg.elev_w]
         rospy.logdebug(f'Received wind: {self.wind}')
@@ -204,7 +204,7 @@ class QuadSim:
 
         if res is None:
             return
-        
+
         new_t, curr_pos, curr_quat = res
         loops = int((new_t - self.t)/self.Ts)
 
