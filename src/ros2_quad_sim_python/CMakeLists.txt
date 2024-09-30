@@ -8,11 +8,12 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   sensor_msgs
   message_generation
+  quad_sim_python_msgs
 )
 
 ## Dichiarazione delle dipendenze di runtime
 catkin_package(
-  CATKIN_DEPENDS rospy std_msgs geometry_msgs sensor_msgs
+  CATKIN_DEPENDS rospy std_msgs geometry_msgs sensor_msgs quad_sim_python_msgs
 )
 
 ## Installazione degli script Python
