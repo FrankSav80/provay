@@ -90,7 +90,5 @@
 </include>
 
     <!-- Include RViz2 configuration -->
-<node pkg="rviz" type="rviz" name="rviz" output="screen">
-<param name="config" value="$(find ros2_quad_sim_python)/cfg/rviz_flying_sensor.rviz" />
-</node>
+<node pkg="rviz" type="rviz" name="rviz" output="screen" args="-d $(find ros2_quad_sim_python)/cfg/rviz_flying_sensor.rviz" />
 </launch>
