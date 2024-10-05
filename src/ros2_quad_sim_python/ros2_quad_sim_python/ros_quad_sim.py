@@ -104,7 +104,6 @@ class QuadSim:
         rospy.Timer(rospy.Duration(1.0), self.on_tf_init_timer)
 
     def get_tf(self, t=0.0, timeout=1.0):
-        rospy.loginfo("Entrato nella funzione get_tf.")
         try:
             now = rospy.Time.from_sec(t)
             self.tf_listener.waitForTransform(quad_params["map_frame"], quad_params["target_frame"], now, rospy.Duration(timeout))
